@@ -43,8 +43,55 @@ def move_file_to_folder(file_path: Path, target_folder: Path) -> Path:
     return dest
 
 
-create_folder(Path(r"C:\Users\alexs\codeProj\VooDooFolders"), "playground")
-move_file_to_folder(
-    Path(r"C:\Users\alexs\codeProj\VooDooFolders\test.py"),
-    Path(r"C:\Users\alexs\codeProj\VooDooFolders\playground\test.py"),
-)
+def normalize_extensions(exts: list[str]) -> set[str]:
+    """
+    Normalize a list of extensions to a lowercase set with leading dots.
+    Example: ["mp3", ".WAV"] -> {".mp3", ".wav"}
+    """
+    norm = set()
+    for e in exts:
+        e = e.strip()
+        if not e:
+            continue
+        if not e.startswith("."):
+            e = "." + e
+        norm.add(e.lower())
+    return norm
+
+
+def move_files_by_extension(
+    root_dir: Path,
+    extensions: list[str],
+    target_folder_name: str,
+) -> list[tuple[Path, Path]]:
+    """
+    Move all files under root_dir whose extension is in `extensions`
+    into a folder named `target_folder_name` inside root_dir.
+
+    Returns a list of (source_path, dest_path) for all moved files.
+    """
+
+    if not root_dir.exists() or not root_dir.is_dir():
+        raise ValueError(f"root_dir is not a directory: {root_dir}")
+
+    exts = normalize_extensions(extensions)
+
+    target_folder = create_folder(root_dir, target_folder_name)
+    moved: list[tuple[Path, Path]] = []
+
+    for path in root_dir.rglob("*"):
+        if not path.is_file():
+            continue
+
+        if path.suffix.lower() not in exts:
+            continue
+
+        # Don't try to move files that are already in the target folder
+        if target_folder in path.parents:
+            continue
+
+        dest_before = path
+        dest_after = move_file_to_folder(path, target_folder)
+        moved.append((dest_before, dest_after))
+
+    return moved
